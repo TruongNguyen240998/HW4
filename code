@@ -1,0 +1,95 @@
+from random import random
+import matplotlib.pyplot as plt
+from matplotlib.pylab import *
+import math
+import numpy as np
+from copy import deepcopy
+
+
+def moon(num_points, distance, radius, width):
+    '''
+    Function to create the double moon
+    '''
+
+    points = num_points
+
+    x1 = [0 for _ in range(points)]
+    y1 = [0 for _ in range(points)]
+    x2 = [0 for _ in range(points)]
+    y2 = [0 for _ in range(points)]
+
+    for i in range(points):
+        d = distance
+        r = radius
+        w = width
+        a = random() * math.pi
+        x1[i] = math.sqrt(random()) * math.cos(a) * (w / 2) + (
+                    (-(r + w / 2) if (random() < 0.5) else (r + w / 2)) * math.cos(a))
+        y1[i] = math.sqrt(random()) * math.sin(a) * (w) + (r * math.sin(a)) + d
+
+        a = random() * math.pi + math.pi
+        x2[i] = (r + w / 2) + math.sqrt(random()) * math.cos(a) * (w / 2) + (
+            (-(r + w / 2)) if (random() < 0.5) else (r + w / 2)) * math.cos(a)
+        y2[i] = -(math.sqrt(random()) * math.sin(a) * (-w) + (-r * math.sin(a))) - d
+    return ([x1, x2, y1, y2])
+
+
+
+def processed_data(x,y,x0,y0):
+    dataset1 = np.resize(deepcopy(x), (1, len(x)))
+    dataset1 = np.append(dataset1, np.resize(deepcopy(y), (1, len(y))), axis=0)
+    dataset1 = np.append(dataset1, np.ones((1, len(x)))*-1, axis=0)
+    dataset1 = dataset1.transpose()
+    dataset2 = np.resize(deepcopy(x0), (1, len(x0)))
+    dataset2 = np.append(dataset2, np.resize(deepcopy(y0), (1, len(y0))), axis=0)
+    dataset2 = np.append(dataset2, np.ones((1, len(x0))), axis=0)
+    dataset2 = dataset2.transpose()
+    dataset = np.append(dataset1, dataset2, axis=0)
+    np.random.shuffle(dataset)
+    return dataset
+
+
+def predict(row, weights):
+    activation = weights[0]
+    for i in range(len(row) - 1):
+        activation += weights[i+1] * row[i]
+    return 1 if activation >= 0 else -1
+
+
+def trainning_weight(train, lamda, n_epoch):
+    weight = [0.0 for i in range(len(train[0]))]
+    for epoch in range(n_epoch):
+        for row in train:
+            prediction = predict(row, weight)
+            error = row[-1] - prediction
+            if(weight[0]-1/2*error > lamda/4):
+                weight[0] = weight[0]-1/2*error-lamda/4
+            if(weight[0]-1/2*error < -lamda/4):
+                weight[0] = weight[0]-1/2*error+lamda/4
+            else:
+                weight[0] = 0
+            for i in range(len(row)-1):
+                if(weight[i+1]-1/2*row[i+1]*error > lamda/4):
+                    weight[i+1] = weight[i+1]-1/2*row[i+1]*error-lamda/4
+                if(weight[i+1]-1/2*row[i+1]*error < -lamda/4):
+                    weight[i+1] = weight[i+1]-1/2*row[i+1]*error+lamda/4
+                else:
+                    weight[i+1] = 0
+    return weight
+
+learning_rate = 0.001
+raw_dataset = moon(1000,1, 10, 6)
+dataset = processed_data(raw_dataset[0],raw_dataset[2],raw_dataset[1],raw_dataset[3])
+w = trainning_weight(dataset,learning_rate,100)
+
+x = np.linspace(np.amin(dataset),np.amax(dataset),100)
+y = -(w[0] + x*w[1])/w[2]
+plt.plot(x, y, '--k')
+
+for i in dataset:
+    m = predict(i,w)
+    if m == 1:
+        plt.plot(i[0], i[1], marker='x', color='r',label="bl")
+    else:
+        plt.plot(i[0], i[1], marker='x', color='b',label='rd')
+plt.show()
